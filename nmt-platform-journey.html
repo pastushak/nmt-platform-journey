@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NMT Math Platform — шлях реалізації</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@400;700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0c10;
+    --bg2:       #111318;
+    --bg3:       #181b22;
+    --border:    #ffffff14;
+    --border2:   #ffffff24;
+    --text:      #e8eaf0;
+    --muted:     #7a7f8e;
+    --dim:       #3a3f4e;
+
+    --amber:     #f5a623;
+    --amber-dim: #f5a62322;
+    --teal:      #22d3aa;
+    --teal-dim:  #22d3aa18;
+    --purple:    #a78bfa;
+    --purple-dim:#a78bfa18;
+    --coral:     #f87171;
+    --coral-dim: #f8717118;
+    --blue:      #60a5fa;
+    --blue-dim:  #60a5fa18;
+    --green:     #4ade80;
+    --green-dim: #4ade8018;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID NOISE ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    text-align: center;
+  }
+
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.2s forwards;
+  }
+
+  .hero h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(32px, 6vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.35s forwards;
+  }
+
+  .hero h1 span { color: var(--teal); }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 520px;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.5s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.65s forwards;
+  }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    background: var(--bg2);
+    letter-spacing: 0.05em;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    animation: fadeUp 0.6s 1s forwards;
+  }
+  .scroll-hint svg { animation: bounce 2s 1.5s ease-in-out infinite; }
+
+  /* ── PHASES WRAPPER ── */
+  .phases {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+  }
+
+  /* Vertical line */
+  .phases::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, var(--border2) 5%, var(--border2) 95%, transparent);
+    transform: translateX(-50%);
+  }
+
+  /* ── PHASE ── */
+  .phase {
+    display: grid;
+    grid-template-columns: 1fr 48px 1fr;
+    gap: 0 0;
+    margin-bottom: 0;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+
+  .phase.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* left and right cards */
+  .phase-left  { padding: 0 28px 60px 0; }
+  .phase-right { padding: 0 0 60px 28px; }
+
+  /* odd phases: main card on left, detail on right */
+  /* even phases: main card on right, detail on left */
+  .phase:nth-child(even) .phase-left  { order: 3; padding: 0 0 60px 28px; }
+  .phase:nth-child(even) .phase-center { order: 2; }
+  .phase:nth-child(even) .phase-right { order: 1; padding: 0 28px 60px 0; }
+
+  .phase-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .phase-dot {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 2px solid var(--dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .phase.visible .phase-dot {
+    border-color: var(--phase-color, var(--teal));
+    box-shadow: 0 0 16px var(--phase-glow, #22d3aa44);
+    color: var(--phase-color, var(--teal));
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+
+  .card:hover {
+    border-color: var(--phase-color, var(--teal));
+    transform: translateY(-2px);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--phase-color, var(--teal));
+    opacity: 0.6;
+  }
+
+  .card-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--phase-color, var(--teal));
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .card h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  .card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── DETAIL CARD ── */
+  .detail-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .detail-card .detail-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .detail-row .detail-key {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--phase-color, var(--teal));
+    flex-shrink: 0;
+    min-width: 14px;
+  }
+
+  .detail-row .detail-val {
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .detail-row .detail-val strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ── TECH PILLS ── */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    background: var(--phase-dim, var(--teal-dim));
+    color: var(--phase-color, var(--teal));
+    border: 1px solid var(--phase-color, var(--teal))44;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── RESULT BLOCK ── */
+  .result-block {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto 120px;
+    padding: 0 24px;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+
+  .result-block.visible { opacity: 1; transform: translateY(0); }
+
+  .result-inner {
+    border: 1px solid var(--teal);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    background: var(--teal-dim);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-inner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, #22d3aa18, transparent 70%);
+    pointer-events: none;
+  }
+
+  .result-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 12px;
+  }
+
+  .result-inner h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(20px, 3vw, 32px);
+    font-weight: 900;
+    color: var(--teal);
+    margin-bottom: 10px;
+  }
+
+  .result-inner p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .result-link {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 12px 28px;
+    border: 1px solid var(--teal);
+    border-radius: 6px;
+    color: var(--teal);
+    text-decoration: none;
+    background: transparent;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .result-link:hover {
+    background: var(--teal);
+    color: var(--bg);
+  }
+
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+
+  .stat-item { text-align: center; }
+  .stat-num {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--teal);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .phases::before { left: 24px; }
+    .phase {
+      grid-template-columns: 48px 1fr;
+      grid-template-rows: auto auto;
+    }
+    .phase-center { grid-row: 1; grid-column: 1; }
+    .phase-left, .phase-right {
+      grid-row: 1; grid-column: 2;
+      padding: 0 0 8px 16px !important;
+      order: unset !important;
+    }
+    .phase:nth-child(even) .phase-left,
+    .phase:nth-child(even) .phase-right { order: unset !important; padding: 0 0 8px 16px !important; }
+    .detail-wrapper {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      padding: 0 0 48px 64px;
+    }
+    .phase:nth-child(even) .detail-wrapper { order: unset !important; }
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: var(--teal);
+    width: 0%;
+    z-index: 100;
+    transition: width 0.1s;
+    box-shadow: 0 0 8px var(--teal);
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-label">Vibe Coding · Результат</div>
+  <h1>NMT Math<br><span>Platform</span></h1>
+  <p class="hero-sub">Від ідеї вчителя математики до задеплоєної платформи підготовки до НМТ — один чат за раз.</p>
+  <div class="hero-meta">
+    <span class="badge">Next.js 14</span>
+    <span class="badge">Supabase</span>
+    <span class="badge">Tailwind CSS</span>
+    <span class="badge">Vercel</span>
+    <span class="badge">TypeScript</span>
+  </div>
+  <div class="scroll-hint">
+    <svg width="20" height="28" viewBox="0 0 20 28" fill="none">
+      <rect x="1" y="1" width="18" height="22" rx="9" stroke="#3a3f4e" stroke-width="1.5"/>
+      <rect x="9" y="6" width="2" height="6" rx="1" fill="#22d3aa"/>
+      <path d="M5 26l5 5 5-5" stroke="#3a3f4e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ── PHASES ── -->
+<div class="phases">
+
+  <!-- PHASE 0 -->
+  <div class="phase" style="--phase-color: var(--amber); --phase-dim: var(--amber-dim); --phase-glow: #f5a62344;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--amber);">
+        <span class="card-tag">Фаза 0 · Старт</span>
+        <h2>Ідея: цифровий інструмент замість паперу</h2>
+        <p>Вчитель математики хоче дати учням можливість тренуватися онлайн: реальні варіанти НМТ, автоперевірка, аналітика помилок.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">Концепція</span>
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">2 ролі: учень / вчитель</span>
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">22 питання · 32 бали</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">0</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--amber);">
+        <div class="detail-title">Формат НМТ з математики</div>
+        <div class="detail-row"><span class="detail-key">→</span><span class="detail-val"><strong>Блок 1</strong> — 15 питань з вибором, по 1 балу</span></div>
+        <div class="detail-row"><span class="detail-key">→</span><span class="detail-val"><strong>Блок 2</strong> — 3 задачі на відповідності, 3 бали кожна</span></div>
+        <div class="detail-row"><span class="detail-key">→</span><span class="detail-val"><strong>Блок 3</strong> — 4 відкриті відповіді, 2 бали кожна</span></div>
+        <div class="detail-row"><span class="detail-key">=</span><span class="detail-val"><strong>Максимум 32 бали</strong></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase" style="--phase-color: var(--teal); --phase-dim: var(--teal-dim); --phase-glow: #22d3aa44;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--teal);">
+        <span class="card-tag">Фаза 1 · Фундамент</span>
+        <h2>Стек, репозиторій, база даних</h2>
+        <p>Ініціалізація проєкту, підключення Supabase, налаштування деплою через GitHub → Vercel.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">Next.js 14 App Router</span>
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">TypeScript</span>
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">Tailwind CSS</span>
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">Supabase</span>
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">GitHub + Vercel</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">1</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--teal);">
+        <div class="detail-title">Схема БД (4 таблиці)</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>profiles</strong> — id, name, role, verified</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>variants</strong> — title, questions (JSON)</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>attempts</strong> — started_at, finished_at, score</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>answers</strong> — question_id, answer, correct</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">RLS вимкнено — режим розробки</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase" style="--phase-color: var(--amber); --phase-dim: var(--amber-dim); --phase-glow: #f5a62344;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--amber);">
+        <span class="card-tag">Фаза 2 · Автентифікація</span>
+        <h2>Google OAuth + розподіл ролей</h2>
+        <p>Вхід через Google, первинне налаштування імені, визначення ролі: учень або вчитель.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">Google OAuth</span>
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">Setup-name flow</span>
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">Auth callback</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">2</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--amber);">
+        <div class="detail-title">Ключове технічне рішення</div>
+        <div class="detail-row"><span class="detail-key">✕</span><span class="detail-val"><strong>.eq('id', user.id)</strong> — повертає null на сервері (SSR-баг Supabase)</span></div>
+        <div class="detail-row"><span class="detail-key">✓</span><span class="detail-val"><strong>.rpc('get_my_profile')</strong> — надійно працює в серверних компонентах</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">Middleware спрощено до passthrough — Edge Runtime несумісний із Supabase SSR</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="phase" style="--phase-color: var(--purple); --phase-dim: var(--purple-dim); --phase-glow: #a78bfa44;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--purple);">
+        <span class="card-tag">Фаза 3 · Учнівський інтерфейс</span>
+        <h2>Тести, таймер, результати, статистика</h2>
+        <p>Повний цикл проходження тесту: вибір варіанту, інструкція, таймер, відповіді, результат, аналіз помилок по темах.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">/home</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">/tests</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">/tests/[id]</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">/results</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">/stats</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">/materials</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">3</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--purple);">
+        <div class="detail-title">Що бачить учень</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>/home</strong> — найкращий бал, тренд, залишок варіантів</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>/tests</strong> — список варіантів зі статусами</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Тест</strong> — таймер + модальна інструкція</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>/stats</strong> — «Потребують уваги» / «Добре засвоєно»</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>/materials</strong> — LaTeX-формули, офіц./доп. вкладки</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase" style="--phase-color: var(--coral); --phase-dim: var(--coral-dim); --phase-glow: #f8717144;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--coral);">
+        <span class="card-tag">Фаза 4 · Адмін-панель</span>
+        <h2>Дашборд вчителя, редактор варіантів</h2>
+        <p>Повна аналітика класу, управління учнями, імпорт варіантів у JSON-форматі, перегляд детальної статистики кожного учня.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">/admin</span>
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">/admin/variants</span>
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">/admin/students</span>
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">/admin/students/[id]</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">4</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--coral);">
+        <div class="detail-title">Що бачить вчитель</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Дашборд</strong> — графік активності, гістограма балів НМТ</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Рейтинг</strong> — топ-5 → розгорнути всіх</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Помилки по темах</strong> — агрегований аналіз класу</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Учні</strong> — верифікація, блок, перейменування</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Редактор</strong> — JSON-імпорт + завантаження зображень</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">window.location.href замість router.refresh() — надійніше після мутацій</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div class="phase" style="--phase-color: var(--blue); --phase-dim: var(--blue-dim); --phase-glow: #60a5fa44;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--blue);">
+        <span class="card-tag">Фаза 5 · Полірування</span>
+        <h2>Мобільна адаптація, UX, контент</h2>
+        <p>Виправлення мобільного зуму, горизонтального скролу, бургер-меню для адміна, StudentHeader, Footer, LaTeX-матеріали зі стереометрією.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">viewport fix</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">overflow-x: hidden</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">StudentHeader</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">AdminHeader mobile</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">Footer v1.5</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">KaTeX LaTeX</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">5</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--blue);">
+        <div class="detail-title">Контент варіантів НМТ</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val">Власний JSON-формат питань — single, matching, open</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val">LaTeX-формули через KaTeX — алгебра, геометрія, стереометрія</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">Pipe | в LaTeX конфліктує з Markdown-таблицями → замінено на \lvert...\rvert</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val">Офіційні матеріали НМТ + додаткові формули — дві вкладки</span></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /phases -->
+
+<!-- ── RESULT ── -->
+<div class="result-block">
+  <div class="result-inner">
+    <div class="result-label">Результат · Задеплоєно</div>
+    <h2>nmt-platform.vercel.app</h2>
+    <p>Повноцінна дворолева платформа підготовки до НМТ з математики, побудована методом vibe coding.</p>
+    <a href="https://nmt-platform.vercel.app" class="result-link" target="_blank">Відкрити платформу →</a>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-num">22</div>
+        <div class="stat-label">питання у варіанті</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">32</div>
+        <div class="stat-label">максимум балів</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">2</div>
+        <div class="stat-label">ролі користувачів</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">5</div>
+        <div class="stat-label">чатів → продукт</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Progress bar
+  window.addEventListener('scroll', () => {
+    const p = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+    document.getElementById('progress').style.width = (p * 100) + '%';
+  });
+
+  // Intersection observer for phase animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.phase, .result-block').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
