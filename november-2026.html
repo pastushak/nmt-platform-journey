@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Від платформи до екосистеми</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@400;700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0c10;
+    --bg2:       #111318;
+    --bg3:       #181b22;
+    --border:    #ffffff14;
+    --border2:   #ffffff24;
+    --text:      #e8eaf0;
+    --muted:     #7a7f8e;
+    --dim:       #3a3f4e;
+
+    --amber:     #f5a623;
+    --amber-dim: #f5a62322;
+    --teal:      #22d3aa;
+    --teal-dim:  #22d3aa18;
+    --purple:    #a78bfa;
+    --purple-dim:#a78bfa18;
+    --coral:     #f87171;
+    --coral-dim: #f8717118;
+    --blue:      #60a5fa;
+    --blue-dim:  #60a5fa18;
+    --green:     #4ade80;
+    --green-dim: #4ade8018;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID NOISE ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    text-align: center;
+  }
+
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.2s forwards;
+  }
+
+  .hero h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(32px, 6vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.35s forwards;
+  }
+
+  .hero h1 span { color: var(--teal); }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 520px;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.5s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.65s forwards;
+  }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    background: var(--bg2);
+    letter-spacing: 0.05em;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    animation: fadeUp 0.6s 1s forwards;
+  }
+  .scroll-hint svg { animation: bounce 2s 1.5s ease-in-out infinite; }
+
+  /* ── PHASES WRAPPER ── */
+  .phases {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+  }
+
+  /* Vertical line */
+  .phases::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, var(--border2) 5%, var(--border2) 95%, transparent);
+    transform: translateX(-50%);
+  }
+
+  /* ── PHASE ── */
+  .phase {
+    display: grid;
+    grid-template-columns: 1fr 48px 1fr;
+    gap: 0 0;
+    margin-bottom: 0;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+
+  .phase.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* left and right cards */
+  .phase-left  { padding: 0 28px 60px 0; }
+  .phase-right { padding: 0 0 60px 28px; }
+
+  /* odd phases: main card on left, detail on right */
+  /* even phases: main card on right, detail on left */
+  .phase:nth-child(even) .phase-left  { order: 3; padding: 0 0 60px 28px; }
+  .phase:nth-child(even) .phase-center { order: 2; }
+  .phase:nth-child(even) .phase-right { order: 1; padding: 0 28px 60px 0; }
+
+  .phase-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .phase-dot {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 2px solid var(--dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .phase.visible .phase-dot {
+    border-color: var(--phase-color, var(--teal));
+    box-shadow: 0 0 16px var(--phase-glow, #22d3aa44);
+    color: var(--phase-color, var(--teal));
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+
+  .card:hover {
+    border-color: var(--phase-color, var(--teal));
+    transform: translateY(-2px);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--phase-color, var(--teal));
+    opacity: 0.6;
+  }
+
+  .card-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--phase-color, var(--teal));
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .card h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  .card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── DETAIL CARD ── */
+  .detail-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .detail-card .detail-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .detail-row .detail-key {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--phase-color, var(--teal));
+    flex-shrink: 0;
+    min-width: 14px;
+  }
+
+  .detail-row .detail-val {
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .detail-row .detail-val strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ── TECH PILLS ── */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    background: var(--phase-dim, var(--teal-dim));
+    color: var(--phase-color, var(--teal));
+    border: 1px solid var(--phase-color, var(--teal))44;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── RESULT BLOCK ── */
+  .result-block {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto 120px;
+    padding: 0 24px;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+
+  .result-block.visible { opacity: 1; transform: translateY(0); }
+
+  .result-inner {
+    border: 1px solid var(--teal);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    background: var(--teal-dim);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-inner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, #22d3aa18, transparent 70%);
+    pointer-events: none;
+  }
+
+  .result-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 12px;
+  }
+
+  .result-inner h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(20px, 3vw, 32px);
+    font-weight: 900;
+    color: var(--teal);
+    margin-bottom: 10px;
+  }
+
+  .result-inner p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .result-link {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 12px 28px;
+    border: 1px solid var(--teal);
+    border-radius: 6px;
+    color: var(--teal);
+    text-decoration: none;
+    background: transparent;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .result-link:hover {
+    background: var(--teal);
+    color: var(--bg);
+  }
+
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+
+  .stat-item { text-align: center; }
+  .stat-num {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--teal);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .phases::before { left: 24px; }
+    .phase {
+      grid-template-columns: 48px 1fr;
+      grid-template-rows: auto auto;
+    }
+    .phase-center { grid-row: 1; grid-column: 1; }
+    .phase-left, .phase-right {
+      grid-row: 1; grid-column: 2;
+      padding: 0 0 8px 16px !important;
+      order: unset !important;
+    }
+    .phase:nth-child(even) .phase-left,
+    .phase:nth-child(even) .phase-right { order: unset !important; padding: 0 0 8px 16px !important; }
+    .detail-wrapper {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      padding: 0 0 48px 64px;
+    }
+    .phase:nth-child(even) .detail-wrapper { order: unset !important; }
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: var(--teal);
+    width: 0%;
+    z-index: 100;
+    transition: width 0.1s;
+    box-shadow: 0 0 8px var(--teal);
+  }
+
+  /* ── VERSION TABS ── */
+  .version-tabs {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 101; display: flex; gap: 4px; padding: 4px;
+    background: #111318e6; border: 1px solid var(--border2); border-radius: 999px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    max-width: calc(100vw - 32px);
+  }
+  .version-tabs a {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em;
+    padding: 7px 14px; border-radius: 999px; color: var(--muted);
+    text-decoration: none; white-space: nowrap; transition: color .2s, background .2s;
+  }
+  .version-tabs a:hover { color: var(--text); }
+  .version-tabs a.active { background: var(--teal-dim); color: var(--teal); box-shadow: inset 0 0 0 1px #22d3aa55; }
+  @media (max-width: 420px) { .version-tabs a { padding: 6px 10px; font-size: 10px; } }
+
+  /* ── SECTION HEADS ── */
+  .section-head { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 24px 48px; text-align: center; }
+  .section-head .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--teal); margin-bottom: 12px; }
+  .section-head h2 { font-family: 'Unbounded', sans-serif; font-size: clamp(22px, 3.4vw, 34px); font-weight: 900; letter-spacing: -.01em; line-height: 1.15; }
+  .section-head p { color: var(--muted); max-width: 560px; margin: 12px auto 0; font-size: 14px; }
+
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .5s, transform .5s; }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ── COMPARE ── */
+  .compare { position: relative; z-index: 1; max-width: 900px; margin: 0 auto 120px; padding: 0 24px; }
+  .compare-table { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .cmp-row { display: grid; grid-template-columns: 150px 1fr 1fr; border-top: 1px solid var(--border); }
+  .cmp-row:first-child { border-top: 0; }
+  .cmp-row > div { padding: 14px 18px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .cmp-row .k { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text); background: var(--bg3); }
+  .cmp-row.hdr > div { font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); background: var(--bg3); }
+  .cmp-row.hdr .mar { color: var(--amber); }
+  .cmp-row.hdr .nov { color: var(--teal); }
+  .cmp-row .nov strong { color: var(--teal); font-weight: 500; }
+  .cmp-row .mar strong { color: var(--amber); font-weight: 500; }
+  .cmp-row.same .nov, .cmp-row.same .mar { color: var(--text); }
+
+  /* ── LESSONS ── */
+  .lessons { position: relative; z-index: 1; max-width: 900px; margin: 0 auto 120px; padding: 0 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .lesson { --phase-color: var(--teal); }
+  .lesson .num { font-family: 'Unbounded', sans-serif; font-size: 28px; font-weight: 900; color: var(--phase-color); opacity: .35; line-height: 1; margin-bottom: 10px; }
+  .lesson .ex { margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--phase-color); line-height: 1.5; }
+
+  /* ── QUESTIONS ── */
+  .questions { position: relative; z-index: 1; max-width: 760px; margin: 0 auto 120px; padding: 0 24px; counter-reset: q; }
+  .q { display: flex; gap: 18px; align-items: flex-start; padding: 20px 0; border-top: 1px solid var(--border); }
+  .q:last-child { border-bottom: 1px solid var(--border); }
+  .q::before { counter-increment: q; content: counter(q, decimal-leading-zero); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--purple); padding-top: 3px; flex-shrink: 0; }
+  .q h3 { font-family: 'Unbounded', sans-serif; font-size: 15px; font-weight: 700; line-height: 1.4; margin-bottom: 6px; }
+  .q p { font-size: 13px; color: var(--muted); }
+
+  .result-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .result-link.ghost { border-color: var(--border2); color: var(--muted); }
+  .result-link.ghost:hover { background: var(--bg3); color: var(--text); }
+
+  @media (max-width: 640px) {
+    .cmp-row { grid-template-columns: 1fr 1fr; }
+    .cmp-row .k { grid-column: 1 / -1; padding: 10px 14px; }
+    .cmp-row.hdr .k { display: none; }
+    .cmp-row > div { padding: 12px 14px; }
+    .lessons { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="version-tabs" aria-label="Версії конспекту">
+  <a href="./">Березень 2026</a>
+  <a href="november-2026.html" class="active">Листопад 2026</a>
+</nav>
+
+<div class="progress-bar" id="progress"></div>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-label">Vibe Coding · Через 8 місяців</div>
+  <h1>Від платформи<br><span>до екосистеми</span></h1>
+  <p class="hero-sub">У березні — одна платформа за 5 чатів. У листопаді — кілька інструментів навколо посібника, а ШІ вже не лише пише код, а й допомагає перевіряти роботи учнів. Під контролем учителя.</p>
+  <div class="hero-meta">
+    <span class="badge">GitHub Pages</span>
+    <span class="badge">Supabase</span>
+    <span class="badge">Claude API</span>
+    <span class="badge">JSON</span>
+    <span class="badge">Python</span>
+  </div>
+  <div class="scroll-hint">
+    <svg width="20" height="28" viewBox="0 0 20 28" fill="none">
+      <rect x="1" y="1" width="18" height="22" rx="9" stroke="#3a3f4e" stroke-width="1.5"/>
+      <rect x="9" y="6" width="2" height="6" rx="1" fill="#22d3aa"/>
+      <path d="M5 26l5 5 5-5" stroke="#3a3f4e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ── COMPARE ── -->
+<div class="section-head reveal">
+  <div class="eyebrow">Березень → Листопад</div>
+  <h2>Що змінилося</h2>
+  <p>Вкладка «Березень 2026» вгорі показує, з чого все починалося.</p>
+</div>
+<div class="compare reveal">
+  <div class="compare-table">
+      <div class="cmp-row hdr"><div class="k"></div><div class="mar">Березень 2026</div><div class="nov">Листопад 2026</div></div>
+      <div class="cmp-row "><div class="k">Продукт</div><div class="mar">Одна платформа: <strong>варіанти НМТ</strong></div><div class="nov">Кілька інструментів: <strong>Зошит, hw-check, тести для Всеосвіти, розклад груп</strong></div></div>
+      <div class="cmp-row "><div class="k">Технології</div><div class="mar">Next.js 14, TypeScript, Vercel</div><div class="nov">Статичні сторінки на <strong>GitHub Pages</strong> + Supabase</div></div>
+      <div class="cmp-row "><div class="k">Вхід</div><div class="mar">Google OAuth</div><div class="nov">Акаунти, <strong>згенеровані скриптом</strong> для конкретних учнів</div></div>
+      <div class="cmp-row "><div class="k">Захист даних</div><div class="mar"><strong>RLS вимкнено</strong> «на час розробки»</div><div class="nov"><strong>RLS увімкнено</strong>, ключі поза репозиторієм</div></div>
+      <div class="cmp-row "><div class="k">Роль ШІ</div><div class="mar">Пише код</div><div class="nov">Пише код, готує контент, <strong>допомагає перевіряти</strong> роботи</div></div>
+      <div class="cmp-row same"><div class="k">Хто вирішує</div><div class="mar">Учитель</div><div class="nov">Учитель</div></div>
+  </div>
+</div>
+
+<!-- ── PHASES ── -->
+<div class="section-head reveal">
+  <div class="eyebrow">Продовження хронології</div>
+  <h2>Фази 6–10</h2>
+</div>
+<div class="phases">
+
+  <!-- PHASE 6 -->
+  <div class="phase" style="--phase-color: var(--amber); --phase-dim: var(--amber-dim); --phase-glow: #f5a62344;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--amber);">
+        <span class="card-tag">Фаза 6 · Основа</span>
+        <h2>Посібник як скелет усієї системи</h2>
+        <p>Усі інструменти тримаються на одному паперовому посібнику: 26 параграфів і 50 тестів. Курс розрахований на 39 тижнів і чергує блоки алгебри та геометрії.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">§1–17 Алгебра</span>
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">§18–25 Геометрія</span>
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">§26 Параметри</span>
+          <span class="pill" style="--phase-color:var(--amber);--phase-dim:var(--amber-dim)">50 тестів</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">6</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--amber);">
+        <div class="detail-title">Курс на 39 тижнів</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>А1</strong>, тижні 1–9: базова алгебра</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Г</strong>, тижні 10–24: уся геометрія</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>А2</strong>, тижні 25–35: складна алгебра</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Інтенсив</strong>, тижні 36–39: 3–4 варіанти на тиждень</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">ДЗ: <strong>парні</strong> номери вдома, <strong>непарні</strong> розбираємо на занятті</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 7 -->
+  <div class="phase" style="--phase-color: var(--teal); --phase-dim: var(--teal-dim); --phase-glow: #22d3aa44;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--teal);">
+        <span class="card-tag">Фаза 7 · Зошит 2026</span>
+        <h2>Домашні завдання і тести моїх учнів</h2>
+        <p>Учень бачить свої завдання, вводить відповіді й прикладає фото розв’язків. Учитель призначає завдання і бачить чергу на перевірку.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">GitHub Pages</span>
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">Supabase Auth</span>
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">RLS</span>
+          <span class="pill" style="--phase-color:var(--teal);--phase-dim:var(--teal-dim)">25 учнів + 1 вчитель</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">7</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--teal);">
+        <div class="detail-title">Схема БД (4 таблиці)</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>profiles</strong>: хто ти і яка в тебе роль</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>assignments</strong>: завдання</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>assignment_targets</strong>: кому яке завдання призначено</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>submissions</strong>: здані роботи</span></div>
+        <div class="detail-row"><span class="detail-key">✓</span><span class="detail-val"><strong>RLS увімкнено</strong>: вчитель бачить усе, учень бачить лише своє</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">Скрипти з ключами лежать поза публічним репо (<strong>.gitignore</strong>). Перевірено: на GitHub їх немає (404)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 8 -->
+  <div class="phase" style="--phase-color: var(--purple); --phase-dim: var(--purple-dim); --phase-glow: #a78bfa44;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--purple);">
+        <span class="card-tag">Фаза 8 · Контент</span>
+        <h2>Тести з посібника → JSON для Всеосвіти</h2>
+        <p>ШІ переклав тести за §1–4 у формат імпорту Всеосвіти. Формат файлу він знайшов сам через веб-пошук, бо заздалегідь його не знав.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">8 тестів</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">4 типи питань</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">LaTeX → Unicode</span>
+          <span class="pill" style="--phase-color:var(--purple);--phase-dim:var(--purple-dim)">Python</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">8</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--purple);">
+        <div class="detail-title">Що пішло не так і як виправили</div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">Всеосвіта не показує LaTeX → скрипт-конвертер у звичайні символи (x², 16/3)</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val">Задачі на відповідності розбито на 3 окремі питання: у тесті стало 25 питань замість 20</span></div>
+        <div class="detail-row"><span class="detail-key">✓</span><span class="detail-val">Числові відповіді звірено окремим скриптом (точні дроби в Python)</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">ШІ <strong>сам позначив</strong> сумнівне: одне округлення і дві задачі з діаграмами, які треба вставити вручну</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 9 -->
+  <div class="phase" style="--phase-color: var(--coral); --phase-dim: var(--coral-dim); --phase-glow: #f8717144;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--coral);">
+        <span class="card-tag">Фаза 9 · hw-check</span>
+        <h2>ШІ допомагає перевіряти зошити</h2>
+        <p>Учитель завантажує фото виконаної домашки. Claude API розбирає розв’язки, пише рекомендації і генерує схожі приклади на кожну помилку.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">Claude API</span>
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">Фото → розбір</span>
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">Окремий Supabase</span>
+          <span class="pill" style="--phase-color:var(--coral);--phase-dim:var(--coral-dim)">Статистика</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">9</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--coral);">
+        <div class="detail-title">Людина в циклі</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val">ШІ пише <strong>чернетку</strong> висновку, остаточно вирішує вчитель</span></div>
+        <div class="detail-row"><span class="detail-key">!</span><span class="detail-val">Без умов задач ШІ змушений їх <strong>вгадувати</strong> з фото</span></div>
+        <div class="detail-row"><span class="detail-key">✓</span><span class="detail-val">Рішення: банк задач посібника (умови + відповіді), який наповнюється частинами</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val">Окремий Supabase-проєкт, щоб не змішувати дані з Зошитом</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val">Статистика: які задачі посібника вже розв’язано</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 10 -->
+  <div class="phase" style="--phase-color: var(--blue); --phase-dim: var(--blue-dim); --phase-glow: #60a5fa44;">
+    <div class="phase-left">
+      <div class="card" style="--phase-color: var(--blue);">
+        <span class="card-tag">Фаза 10 · Що далі</span>
+        <h2>Від кількох інструментів до однієї платформи</h2>
+        <p>Спершу кожен інструмент має запрацювати окремо. Об’єднувати будемо поступово, коли стане зрозуміло, що справді потрібно.</p>
+        <div class="pills">
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">Список учнів у hw-check</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">Банк задач</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">ШІ-перевірка в Зошиті</span>
+          <span class="pill" style="--phase-color:var(--blue);--phase-dim:var(--blue-dim)">Об’єднання</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-center"><div class="phase-dot">10</div></div>
+    <div class="phase-right detail-wrapper">
+      <div class="detail-card" style="--phase-color: var(--blue);">
+        <div class="detail-title">Найближчі кроки</div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>hw-check</strong>: додати список учнів</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Банк задач</strong>: наповнювати частинами, зокрема з PDF фото сторінок</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Зошит</strong>: живі дані, ШІ-перевірка, сховище для фото</span></div>
+        <div class="detail-row"><span class="detail-key">▸</span><span class="detail-val"><strong>Поступове злиття</strong> інструментів в одну платформу</span></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /phases -->
+
+<!-- ── LESSONS ── -->
+<div class="section-head reveal">
+  <div class="eyebrow">ШІ і суспільство</div>
+  <h2>Уроки vibe-кодингу</h2>
+  <p>Що виявилося важливим не в технологіях, а в людях.</p>
+</div>
+<div class="lessons">
+    <div class="card lesson reveal" style="--phase-color: var(--coral);">
+      <div class="num">01</div>
+      <h2>ШІ помиляється впевнено</h2>
+      <p>Код виглядає правильно, але не працює, і ШІ про це не попереджає. Помітити помилку й перевірити результат має людина.</p>
+      <div class="ex">березень: .eq() → null на сервері · | ламає LaTeX</div>
+    </div>
+    <div class="card lesson reveal" style="--phase-color: var(--teal);">
+      <div class="num">02</div>
+      <h2>Безпека не з’являється сама</h2>
+      <p>У березні захист бази вимкнули «на час розробки». У листопаді він увімкнений з першого дня. ШІ робить те, про що попросили, тож треба знати, про що просити.</p>
+      <div class="ex">RLS · .gitignore · перевірка 404</div>
+    </div>
+    <div class="card lesson reveal" style="--phase-color: var(--amber);">
+      <div class="num">03</div>
+      <h2>Простіше часто краще</h2>
+      <p>Перша версія мала серйозний стек. Нові інструменти — це статичні сторінки і готовий бекенд. Їх легше зрозуміти, підтримувати й виправляти.</p>
+      <div class="ex">Next.js + Vercel → GitHub Pages</div>
+    </div>
+    <div class="card lesson reveal" style="--phase-color: var(--purple);">
+      <div class="num">04</div>
+      <h2>Людина в циклі</h2>
+      <p>Повна автоматизація не мета. ШІ готує чернетку висновку про роботу учня, рішення ухвалює вчитель.</p>
+      <div class="ex">чернетка ≠ оцінка</div>
+    </div>
+    <div class="card lesson reveal" style="--phase-color: var(--blue);">
+      <div class="num">05</div>
+      <h2>Маленькі кроки</h2>
+      <p>Один крок, перевірка, наступний. Великий запит «зроби все» дає великий хаос. Окремі проєкти для окремих задач теж захищають від хаосу.</p>
+      <div class="ex">Крок 7 · окремий Supabase</div>
+    </div>
+    <div class="card lesson reveal" style="--phase-color: var(--green);">
+      <div class="num">06</div>
+      <h2>Дані учнів — це чужі дані</h2>
+      <p>Фото зошитів потрапляють до зовнішнього ШІ-сервісу, а відповіді учнів зберігаються в базі. Хто має про це знати і хто має дати згоду?</p>
+      <div class="ex">питання до обговорення ↓</div>
+    </div>
+</div>
+
+<!-- ── QUESTIONS ── -->
+<div class="section-head reveal">
+  <div class="eyebrow">Обговорення</div>
+  <h2>Питання для класу</h2>
+</div>
+<div class="questions">
+    <div class="q reveal"><div><h3>Чи є vibe-кодинг «справжнім програмуванням»?</h3><p>Що мусить розуміти людина, яка будує інструменти разом із ШІ, навіть якщо сама не пише код?</p></div></div>
+    <div class="q reveal"><div><h3>Ти б довірився оцінці, яку поставив ШІ?</h3><p>А якщо вчитель підтверджує кожен вердикт, що змінюється? Що втрачається, якщо він перестане це робити?</p></div></div>
+    <div class="q reveal"><div><h3>Хто відповідає за помилку в коді, який написав ШІ?</h3><p>Автор запиту, компанія-розробник ШІ, чи той, хто опублікував інструмент?</p></div></div>
+    <div class="q reveal"><div><h3>Фото твого зошита надсилають ШІ-сервісу. Які мають бути правила?</h3><p>Згода, що зберігається, хто має доступ і скільки часу.</p></div></div>
+    <div class="q reveal"><div><h3>Що ти міг би зробити так само?</h3><p>Яку маленьку проблему свого класу чи школи можна розв’язати за кілька вечорів разом із ШІ?</p></div></div>
+</div>
+
+<!-- ── RESULT ── -->
+<div class="result-block">
+  <div class="result-inner">
+    <div class="result-label">Листопад 2026 · У роботі</div>
+    <h2>Зошит 2026</h2>
+    <p>Платформа для домашніх завдань і тестів, яка росте разом із курсом.</p>
+    <div class="result-links">
+      <a href="https://pastushak.github.io/zoshyt-2026/" class="result-link" target="_blank">Відкрити Зошит →</a>
+      <a href="./" class="result-link ghost">← Березень 2026</a>
+    </div>
+    <div class="stats-row">
+      <div class="stat-item"><div class="stat-num">26</div><div class="stat-label">параграфів посібника</div></div>
+      <div class="stat-item"><div class="stat-num">50</div><div class="stat-label">тестів</div></div>
+      <div class="stat-item"><div class="stat-num">25</div><div class="stat-label">акаунтів учнів</div></div>
+      <div class="stat-item"><div class="stat-num">4</div><div class="stat-label">інструменти</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const p = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+    document.getElementById('progress').style.width = (p * 100) + '%';
+  });
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.phase, .result-block, .reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
